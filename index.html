@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<head>
+    <style>
+        canvas {
+            position:fixed;
+        }
+        button {
+            width: 275px;
+            margin-top: 10px;
+            padding: 5px;
+        }
+        #label-container {
+            position:fixed;
+            margin-top: 200px;
+            background-color: black;
+            color: white;
+            width: 200px;
+        }
+        #text {
+            width:700px
+        }
+        #monkey {
+            margin-top: 2000px;
+        }
+        .marginLeft {
+            margin-left: 250px;
+        }
+    </style>
+</head>
+<body>
+<div>Page up and down with Machine Learning (put your hand up to scroll up and put your hand down to scroll down)</div>
+<button type="button" onclick="init()">Start</button>
+<div><canvas id="canvas"></canvas></div>
+<div id="label-container"></div>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.3.1/dist/tf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@teachablemachine/pose@0.8/dist/teachablemachine-pose.min.js"></script>
+<script type="text/javascript">
+
+    const URL = "https://teachablemachine.withgoogle.com/models/3GRwhzGLH/";
+    let model, webcam, ctx, labelContainer, maxPredictions;
+
+    async function init() {
+        const modelURL = URL + "model.json";
+        const metadataURL = URL + "metadata.json";
+
+        // load the model and metadata
+        model = await tmPose.load(modelURL, metadataURL);
+        maxPredictions = model.getTotalClasses();
+
+        // Convenience function to setup a webcam
+        const size = 200;
+        const flip = true; // whether to flip the webcam
+        webcam = new tmPose.Webcam(size, size, flip); // width, height, flip
+        await webcam.setup(); // request access to the webcam
+        await webcam.play();
+        window.requestAnimationFrame(loop);
+
+        // append/get elements to the DOM
+        const canvas = document.getElementById("canvas");
+        canvas.width = size; canvas.height = size;
+        ctx = canvas.getContext("2d");
+        labelContainer = document.getElementById("label-container");
+        for (let i = 0; i < maxPredictions; i++) { // and class labels
+            labelContainer.appendChild(document.createElement("div"));
+        }
+    }
+
+    async function loop(timestamp) {
+        webcam.update(); // update the webcam frame
+        await predict();
+        window.requestAnimationFrame(loop);
+    }
+
+    async function predict() {
+        // Prediction #1: run input through posenet
+        // estimatePose can take in an image, video or canvas html element
+        const { pose, posenetOutput } = await model.estimatePose(webcam.canvas);
+        // Prediction 2: run input through teachable machine classification model
+        const prediction = await model.predict(posenetOutput);
+
+        for (let i = 0; i < maxPredictions; i++) {
+            const predName = prediction[i].className;
+            const predScore = prediction[i].probability.toFixed(2);
+            const classPrediction = predName + ": " + predScore;
+            labelContainer.childNodes[i].innerHTML = classPrediction;
+            scrollPage(predName, predScore);
+        }
+
+        // finally draw the poses
+        drawPose(pose);
+    }
+
+    function scrollPage(predName, predScore) {
+        if(predName == "Page UP" && predScore >= 0.7) {
+            // scroll page up (I know made a mistake with training my model)
+            window.scrollBy(0,-100);
+        } else if(predName == "Page DOWN" && predScore >= 0.7) {
+            // scroll page down (I know made a mistake with training my model)
+            window.scrollBy(0,100);
+        } else {
+            // console.log("nothing");
+        }
+    }
+
+    function drawPose(pose) {
+        if (webcam.canvas) {
+            ctx.drawImage(webcam.canvas, 0, 0);
+            // draw the keypoints and skeleton
+            if (pose) {
+                const minPartConfidence = 0.5;
+                tmPose.drawKeypoints(pose.keypoints, minPartConfidence, ctx);
+                tmPose.drawSkeleton(pose.keypoints, minPartConfidence, ctx);
+            }
+        }
+    }
+</script>
+<div id="text" class="marginLeft">
+    <p>
+        <h1>Bacon Ipsum</h1>
+        Spicy jalapeno bacon ipsum dolor amet cupim ham hock hamburger brisket rump beef turducken chicken shoulder frankfurter. Short ribs filet mignon spare ribs short loin t-bone shankle cow beef capicola andouille shoulder venison. Ball tip shank cupim, pork pastrami kielbasa buffalo chuck chislic flank andouille tenderloin. Turkey ham hock swine pig short loin kevin boudin biltong tenderloin bresaola meatloaf tongue chislic meatball.
+        Landjaeger ball tip ham hock jerky picanha kevin. Chislic jerky capicola, rump shank pastrami short ribs porchetta filet mignon shankle spare ribs t-bone kielbasa. Jowl beef ribs buffalo, strip steak sausage short ribs swine meatball ground round pig turducken venison hamburger drumstick. Biltong shoulder porchetta, buffalo kevin doner rump shank salami chicken filet mignon turducken fatback short ribs capicola. Meatball pig alcatra, burgdoggen corned beef cow turducken tongue boudin ball tip tail.
+        Cow pig landjaeger, tongue biltong buffalo tenderloin ribeye shankle doner short ribs prosciutto corned beef. Andouille sausage meatball tri-tip, hamburger flank kielbasa. Spare ribs landjaeger drumstick capicola. Flank landjaeger shank, corned beef meatloaf turkey burgdoggen ribeye. Brisket frankfurter kevin swine strip steak tri-tip bacon flank alcatra andouille chuck filet mignon. Pork belly biltong buffalo venison kielbasa sirloin.
+        <br><br>
+        Doner ham hock turkey tongue picanha jowl leberkas. Andouille chuck sausage, tri-tip short loin venison alcatra doner hamburger burgdoggen pork loin chicken ribeye. Meatloaf pork chop chuck sausage cow ribeye hamburger burgdoggen. Pancetta pork belly buffalo, shoulder pork loin drumstick turkey doner pork.
+        Flank buffalo frankfurter tail. Turducken chicken andouille ribeye. Pork chop shoulder filet mignon jerky, chicken bacon alcatra corned beef meatball. Chislic short loin fatback chicken ball tip ham hock. Ball tip alcatra andouille, jowl tri-tip tenderloin bresaola drumstick ribeye cupim short ribs meatloaf buffalo kevin cow. Ball tip landjaeger pancetta fatback sausage corned beef leberkas jerky tongue meatball.
+        Ham boudin shank salami cupim. Pancetta chuck shank venison porchetta pork belly, frankfurter salami ball tip rump tenderloin jowl. Meatloaf pork loin bacon ham ham hock venison shankle cow. Strip steak pork loin pastrami tail venison beef prosciutto sirloin tongue drumstick. Pork chop pancetta chuck, pork belly pork loin jowl fatback tongue beef cupim bacon spare ribs ribeye. Chuck ground round spare ribs frankfurter sausage.
+        <br><br>
+        Sausage beef ribs andouille cupim strip steak leberkas venison pork chop t-bone rump pastrami alcatra bacon. Chislic porchetta pancetta t-bone, cupim sirloin strip steak buffalo. Porchetta filet mignon burgdoggen salami boudin biltong jerky short loin frankfurter t-bone tenderloin rump hamburger. Spare ribs pig landjaeger jerky kevin ham pork loin alcatra brisket capicola jowl tenderloin. Fatback jowl kielbasa, bacon beef ribs turkey landjaeger brisket sirloin. Meatball capicola landjaeger rump.
+        Kielbasa beef ribs meatloaf pork loin jowl, cow turducken. Ball tip landjaeger jerky sausage tri-tip capicola chuck cow burgdoggen sirloin shankle meatloaf. Meatloaf brisket chislic venison, spare ribs chicken fatback pork chop short loin cow short ribs. Buffalo prosciutto hamburger ham hock drumstick. Tenderloin ribeye short ribs buffalo beef frankfurter meatloaf hamburger pork bresaola ham.
+        Salami chislic fatback boudin pancetta filet mignon, drumstick sausage. Tail pig landjaeger, turducken tongue boudin drumstick shoulder beef ribs alcatra chicken biltong cupim. Ground round shank capicola doner jowl chuck, leberkas salami chicken turducken andouille cupim picanha alcatra. Tri-tip landjaeger pork spare ribs venison shankle.
+    </p>
+</div>
+<div id="monkey" class="marginLeft">
+    <img src="./media/code-monkey.png" alt="monkey" width="200">
+</div>
+</body>
+</html>
